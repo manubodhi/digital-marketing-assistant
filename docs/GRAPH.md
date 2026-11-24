@@ -26,26 +26,26 @@ When implementing or modifying any feature, do **NOT** read random files. Traver
 ```mermaid
 graph TD
     subgraph Multi-Tenant Workspace Entity
-        W_DB[(Table: workspaces)]
-        W_QRY[sql/queries/workspace.sql]
-        W_SVC[backend/internal/workspace/service.go]
-        W_HND[backend/internal/workspace/handler.go]
-        W_API[api-spec/openapi.yaml#/workspaces]
-        W_STR[frontend/src/lib/stores/workspace.svelte.ts]
-        W_UI[frontend/src/lib/components/workspace/WorkspaceSwitcher.svelte]
+        W_DB[("Table: workspaces")]
+        W_QRY["sql/queries/workspace.sql"]
+        W_SVC["backend/internal/workspace/service.go"]
+        W_HND["backend/internal/workspace/handler.go"]
+        W_API["api-spec/openapi.yaml#/workspaces"]
+        W_STR["frontend/src/lib/stores/workspace.svelte.ts"]
+        W_UI["frontend/src/lib/components/workspace/WorkspaceSwitcher.svelte"]
 
         W_DB --> W_QRY --> W_SVC --> W_HND --> W_API --> W_STR --> W_UI
     end
 
     subgraph BrandKit Entity
-        B_DB[(Table: brand_kits)]
-        B_QRY[sql/queries/brandkit.sql]
-        B_SVC[backend/internal/brandkit/service.go]
-        B_HND[backend/internal/brandkit/handler.go]
-        B_API[api-spec/openapi.yaml#/workspaces/{id}/brand-kit]
-        B_STR[frontend/src/lib/stores/brand-kit.svelte.ts]
-        B_UI1[frontend/src/lib/components/brand-kit/PaletteEditor.svelte]
-        B_UI2[frontend/src/lib/components/brand-kit/LogoUploader.svelte]
+        B_DB[("Table: brand_kits")]
+        B_QRY["sql/queries/brandkit.sql"]
+        B_SVC["backend/internal/brandkit/service.go"]
+        B_HND["backend/internal/brandkit/handler.go"]
+        B_API["api-spec/openapi.yaml#/workspaces/{id}/brand-kit"]
+        B_STR["frontend/src/lib/stores/brand-kit.svelte.ts"]
+        B_UI1["frontend/src/lib/components/brand-kit/PaletteEditor.svelte"]
+        B_UI2["frontend/src/lib/components/brand-kit/LogoUploader.svelte"]
 
         B_DB --> B_QRY --> B_SVC --> B_HND --> B_API --> B_STR
         B_STR --> B_UI1
@@ -53,13 +53,13 @@ graph TD
     end
 
     subgraph Auth & User Entity
-        U_DB[(Table: users)]
-        U_QRY[sql/queries/auth.sql]
-        U_SVC[backend/internal/auth/service.go]
-        U_HND[backend/internal/auth/handler.go]
-        U_API[api-spec/openapi.yaml#/auth]
-        U_STR[frontend/src/lib/stores/auth.svelte.ts]
-        U_UI[frontend/src/routes/(auth)/login/+page.svelte]
+        U_DB[("Table: users")]
+        U_QRY["sql/queries/auth.sql"]
+        U_SVC["backend/internal/auth/service.go"]
+        U_HND["backend/internal/auth/handler.go"]
+        U_API["api-spec/openapi.yaml#/auth"]
+        U_STR["frontend/src/lib/stores/auth.svelte.ts"]
+        U_UI["frontend/src/routes/(auth)/login/+page.svelte"]
 
         U_DB --> U_QRY --> U_SVC --> U_HND --> U_API --> U_STR --> U_UI
     end

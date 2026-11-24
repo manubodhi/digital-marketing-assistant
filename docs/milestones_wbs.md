@@ -18,11 +18,11 @@ To ensure zero rework and strict adherence to invariants, tasks must be executed
 
 ```mermaid
 flowchart LR
-    M1[Phase 1: Specs & Design Lock] --> M2[Phase 2: Scaffolding & DB Migrations]
-    M2 --> M3[Phase 3: Auth & Tenant Workspaces]
-    M3 --> M4[Phase 4: Brand Kit Studio]
-    M4 --> M5[Phase 5: AI Creative Engine]
-    M5 --> M6[Phase 6: Organic Scheduler & Ads]
+    M1["Phase 1: Specs & Design Lock"] --> M2["Phase 2: Scaffolding & DB Migrations"]
+    M2 --> M3["Phase 3: Auth & Tenant Workspaces"]
+    M3 --> M4["Phase 4: Brand Kit Studio"]
+    M4 --> M5["Phase 5: AI Creative Engine"]
+    M5 --> M6["Phase 6: Organic Scheduler & Ads"]
 ```
 
 ---

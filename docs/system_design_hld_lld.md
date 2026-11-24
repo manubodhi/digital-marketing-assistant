@@ -18,25 +18,25 @@ dependencies: [DOC-001, DOC-002, DOC-003, DOC-004]
 
 ```mermaid
 flowchart TD
-    Client[Browser: SvelteKit SPA] -->|HTTPS / JSON REST| Server[Go HTTP Server: go-chi]
+    Client["Browser: SvelteKit SPA"] -->|HTTPS / JSON REST| Server["Go HTTP Server: go-chi"]
     
     subgraph Server Boundary
-        Server --> AuthMW[Middleware: JWT Auth & CORS]
-        AuthMW --> TenantMW[Middleware: Workspace Isolation Context]
-        TenantMW --> Handlers[Domain HTTP Handlers]
+        Server --> AuthMW["Middleware: JWT Auth & CORS"]
+        AuthMW --> TenantMW["Middleware: Workspace Isolation Context"]
+        TenantMW --> Handlers["Domain HTTP Handlers"]
         
-        Handlers --> Services[Domain Business Services]
-        Services --> SQLc[SQLc Compiled Repositories]
-        Services --> WorkerPool[Background Goroutine Workers]
+        Handlers --> Services["Domain Business Services"]
+        Services --> SQLc["SQLc Compiled Repositories"]
+        Services --> WorkerPool["Background Goroutine Workers"]
     end
 
-    SQLc --> DB[(PostgreSQL Database)]
+    SQLc --> DB[("PostgreSQL Database")]
     
     subgraph External Provider Integrations
-        WorkerPool --> AIProvider[AI Vision/Text: Gemini / Ideogram]
-        WorkerPool --> MetaAPI[Meta Graph & Marketing API]
-        WorkerPool --> GoogleAPI[Google Ads API]
-        WorkerPool --> WhatsAppAPI[WhatsApp Cloud API]
+        WorkerPool --> AIProvider["AI Vision/Text: Gemini / Ideogram"]
+        WorkerPool --> MetaAPI["Meta Graph & Marketing API"]
+        WorkerPool --> GoogleAPI["Google Ads API"]
+        WorkerPool --> WhatsAppAPI["WhatsApp Cloud API"]
     end
 ```
 

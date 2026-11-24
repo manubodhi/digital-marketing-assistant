@@ -217,9 +217,9 @@ func NewService(repo Repository) *Service {
 
 ```mermaid
 flowchart LR
-    Spec[api-spec/openapi.yaml] -->|openapi-typescript| TSClient[frontend/src/lib/api/types.ts]
-    Spec -->|Mobile Code Generation| MobileClient[Future Mobile / Flutter / RN App]
-    Spec -->|go-chi router route binding| GoBackend[Go HTTP Handlers]
+    Spec["api-spec/openapi.yaml"] -->|openapi-typescript| TSClient["frontend/src/lib/api/types.ts"]
+    Spec -->|Mobile Code Generation| MobileClient["Future Mobile / Flutter / RN App"]
+    Spec -->|go-chi router route binding| GoBackend["Go HTTP Handlers"]
 ```
 
 ### 5.1 Contract Sharing Strategy
