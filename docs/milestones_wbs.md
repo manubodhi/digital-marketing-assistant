@@ -40,13 +40,13 @@ flowchart LR
 
 ---
 
-### Milestone 2: Scaffolding, Tooling & Database Migrations
-- [ ] **TASK-2.1**: Initialize Go 1.25+ module in `backend/` with standard layout (`cmd/server/main.go`, `internal/platform/`).
-- [ ] **TASK-2.2**: Set up `sqlc.yaml` and copy initial DDL schema into `backend/sql/schema/001_initial_schema.sql`.
-- [ ] **TASK-2.3**: Initialize SvelteKit (Svelte 5) project in `frontend/` with Tailwind CSS, Lucide icons, and design tokens from DOC-004.
-- [ ] **TASK-2.4**: Configure Vitest for frontend unit tests and verify `npm run test` executes cleanly.
-- [ ] **TASK-2.5**: Set up `api-spec/openapi.yaml` and configure `npm run codegen` (`openapi-typescript`).
-- [ ] **TASK-2.6**: Configure local PostgreSQL runner (`docker-compose.yml`) and verify DB connection with `pgxpool`.
+### Milestone 2: Scaffolding, Tooling & Database Migrations (COMPLETE)
+- [x] **TASK-2.1**: Initialize Go 1.25+ module in `backend/` with standard layout (`cmd/server/main.go`, `internal/platform/`).
+- [x] **TASK-2.2**: Set up `sqlc.yaml` and copy initial DDL schema into `backend/sql/schema/001_initial_schema.sql`.
+- [x] **TASK-2.3**: Initialize SvelteKit (Svelte 5) project in `frontend/` with Tailwind CSS, Lucide icons, and design tokens from DOC-004.
+- [x] **TASK-2.4**: Configure Vitest for frontend unit tests and verify `npm run test` executes cleanly.
+- [x] **TASK-2.5**: Set up `api-spec/openapi.yaml` and configure `npm run codegen` (`openapi-typescript`).
+- [x] **TASK-2.6**: Configure local PostgreSQL runner (`docker-compose.yml`) and verify DB connection with `pgxpool`.
 
 ---
 
