@@ -1,31 +1,60 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chimw "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/manubodhi/digital-marketing-assistant/backend/internal/auth"
 	"github.com/manubodhi/digital-marketing-assistant/backend/internal/platform/config"
+	"github.com/manubodhi/digital-marketing-assistant/backend/internal/platform/database"
+	"github.com/manubodhi/digital-marketing-assistant/backend/internal/platform/database/db"
+	"github.com/manubodhi/digital-marketing-assistant/backend/internal/platform/middleware"
 	"github.com/manubodhi/digital-marketing-assistant/backend/internal/platform/response"
+	"github.com/manubodhi/digital-marketing-assistant/backend/internal/platform/token"
+	"github.com/manubodhi/digital-marketing-assistant/backend/internal/workspace"
 )
 
 func main() {
 	cfg := config.Load()
+	ctx := context.Background()
 
+	// 1. Database Connection Pool
+	pool, err := database.NewPool(ctx, cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("Fatal: Failed to initialize database: %v", err)
+	}
+	defer pool.Close()
+
+	// 2. sqlc Queries Engine
+	queries := db.New(pool)
+
+	// 3. Platform Managers
+	tokenManager := token.NewTokenManager(cfg.JWTSecret, 15*time.Minute)
+
+	// 4. Domain Repositories & Services (Constructor Factory Pattern)
+	authRepo := auth.NewRepository(queries)
+	authService := auth.NewService(authRepo, tokenManager)
+	authHandler := auth.NewHandler(authService)
+
+	workspaceRepo := workspace.NewRepository(queries)
+	workspaceService := workspace.NewService(workspaceRepo)
+	workspaceHandler := workspace.NewHandler(workspaceService)
+
+	// 5. HTTP Router
 	r := chi.NewRouter()
 
-	// Global Middlewares
-	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
-	r.Use(middleware.Logger)
-	r.Use(middleware.Recoverer)
-	r.Use(middleware.Timeout(60 * time.Second))
+	r.Use(chimw.RequestID)
+	r.Use(chimw.RealIP)
+	r.Use(chimw.Logger)
+	r.Use(chimw.Recoverer)
+	r.Use(chimw.Timeout(60 * time.Second))
 
-	// CORS Configuration
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
@@ -40,6 +69,25 @@ func main() {
 			"status":    "healthy",
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 			"version":   "0.1.0",
+		})
+	})
+
+	// API v1 Routes
+	r.Route("/api/v1", func(r chi.Router) {
+		// Public Auth Routes
+		r.Route("/auth", func(r chi.Router) {
+			r.Post("/register", authHandler.Register)
+			r.Post("/login", authHandler.Login)
+		})
+
+		// Protected Workspace Routes
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.Auth(tokenManager))
+
+			r.Route("/workspaces", func(r chi.Router) {
+				r.Get("/", workspaceHandler.ListWorkspaces)
+				r.Post("/", workspaceHandler.CreateWorkspace)
+			})
 		})
 	})
 
