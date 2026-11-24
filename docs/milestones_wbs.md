@@ -51,12 +51,12 @@ flowchart LR
 ---
 
 ### Milestone 3: Authentication & Multi-Tenant Workspaces (End-to-End)
-- [ ] **TASK-3.1**: Implement `backend/internal/auth` (User registration, login, bcrypt, JWT generation) + unit tests in `auth/service_test.go`.
-- [ ] **TASK-3.2**: Implement `backend/internal/workspace` (Create workspace, list user workspaces, membership RBAC) + unit tests.
-- [ ] **TASK-3.3**: Implement JWT Auth & Workspace Guard Middleware (`internal/platform/middleware/`).
-- [ ] **TASK-3.4**: Implement Svelte 5 Auth Store (`frontend/src/lib/stores/auth.svelte.ts`) + unit tests in `auth.test.ts`.
-- [ ] **TASK-3.5**: Implement Svelte 5 Workspace Store (`frontend/src/lib/stores/workspace.svelte.ts`) + unit tests.
-- [ ] **TASK-3.6**: Build Login, Register, and Workspace Switcher UI widgets adhering to DOC-004 tokens.
+- [x] **TASK-3.1**: Implement `backend/internal/auth` (User registration, login, bcrypt/Argon2id, JWT generation) + unit tests in `auth/service_test.go`.
+- [x] **TASK-3.2**: Implement `backend/internal/workspace` (Create workspace, list user workspaces, membership RBAC) + unit tests.
+- [x] **TASK-3.3**: Implement JWT Auth & Workspace Guard Middleware (`internal/platform/middleware/`).
+- [x] **TASK-3.4**: Implement Svelte 5 Auth Store (`frontend/src/lib/stores/auth.svelte.ts`) + unit tests in `auth.test.ts`.
+- [x] **TASK-3.5**: Implement Svelte 5 Workspace Store (`frontend/src/lib/stores/workspace.svelte.ts`) + unit tests.
+- [x] **TASK-3.6**: Build Login, Register, and Workspace Switcher UI widgets adhering to DOC-004 tokens.
 - [ ] **TASK-3.7**: Run security audit (`security_analyst`) and code review (`code_reviewer`) before commit.
 
 ---
