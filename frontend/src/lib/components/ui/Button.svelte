@@ -22,8 +22,8 @@
 	}: Props = $props();
 
 	const variantClasses = {
-		primary: 'bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs',
-		secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border',
+		primary: 'bg-primary text-primary-foreground hover:bg-primary/90 border border-transparent shadow-sm',
+		secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80 border border-border shadow-xs',
 		destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
 		outline: 'border border-border bg-transparent hover:bg-muted text-foreground',
 		ghost: 'hover:bg-muted text-foreground'
