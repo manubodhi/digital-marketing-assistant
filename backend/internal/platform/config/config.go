@@ -19,7 +19,7 @@ func Load() *Config {
 
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {
-		dbURL = "postgres://postgres:postgres@localhost:5432/marketing_assistant?sslmode=disable"
+		dbURL = "postgres://postgres:postgrespassword@127.0.0.1:5432/marketing_assistant?sslmode=disable"
 	}
 
 	jwtSecret := os.Getenv("JWT_SECRET")
