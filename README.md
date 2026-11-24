@@ -25,19 +25,19 @@ The architecture is built on the principles of **lightweight footprint, minimal 
 
 ```mermaid
 flowchart LR
-    subgraph Frontend [Frontend: SvelteKit (Svelte 5)]
+    subgraph Frontend ["Frontend: SvelteKit (Svelte 5)"]
         UI[Widget-Based UI] --> Store[Svelte 5 Runes Stores]
         Store --> APIClient[Typed OpenAPI Client]
     end
 
-    subgraph Backend [Backend: Go 1.25+]
+    subgraph Backend ["Backend: Go 1.25+"]
         APIClient -->|HTTP / JSON| Router[go-chi Router]
         Router --> MW[JWT & Workspace Auth Middleware]
         MW --> Service[Domain Business Services]
         Service --> SQLc[sqlc Type-Safe Queries]
     end
 
-    subgraph Persistence [Database]
+    subgraph Persistence ["Database: PostgreSQL"]
         SQLc --> DB[(PostgreSQL)]
     end
 ```
