@@ -5,7 +5,7 @@ id: DOC-006
 type: Database-Schema-Specification
 status: Accepted
 domain: Persistence, PostgreSQL DDL, Multi-Tenant Data Modeling
-revision: 1.0
+revision: 2.0
 last_updated: 2026-11-24
 dependencies: [DOC-002, DOC-005]
 ```
@@ -16,24 +16,68 @@ dependencies: [DOC-002, DOC-005]
 
 ```mermaid
 erDiagram
-    USERS ||--o{ WORKSPACE_MEMBERS : has
-    WORKSPACES ||--o{ WORKSPACE_MEMBERS : contains
-    WORKSPACES ||--|| BRAND_KITS : owns
-    WORKSPACES ||--o{ SOCIAL_ACCOUNTS : connects
-    WORKSPACES ||--o{ CREATIVES : generates
-    WORKSPACES ||--o{ CAMPAIGNS : runs
-    WORKSPACES ||--o{ SCHEDULED_POSTS : schedules
+    USERS ||--o{ USER_IDENTITIES : "logs in with"
+    USERS ||--o{ REFRESH_TOKEN_FAMILIES : "owns sessions"
+    REFRESH_TOKEN_FAMILIES ||--o{ REFRESH_TOKENS : "rotates"
+    USERS ||--o{ AUTH_VERIFICATION_TOKENS : "receives"
+    USERS ||--o{ USER_TOTP_BACKUP_CODES : "holds"
+    USERS ||--o{ WORKSPACE_MEMBERS : "belongs to"
+    
+    WORKSPACES ||--o{ WORKSPACE_MEMBERS : "contains"
+    WORKSPACES ||--|| BRAND_KITS : "owns"
+    WORKSPACES ||--o{ SOCIAL_ACCOUNTS : "connects"
+    WORKSPACES ||--o{ CREATIVES : "generates"
+    WORKSPACES ||--o{ SCHEDULED_POSTS : "schedules"
+    WORKSPACES ||--o{ CAMPAIGNS : "runs"
 
     USERS {
-        uuid id PK
+        uuid id PK "UUIDv7"
         string email UK
         string password_hash
         string full_name
+        boolean is_email_verified
+        boolean totp_enabled
+        bytea totp_secret_enc
         timestamp created_at
     }
 
+    USER_IDENTITIES {
+        uuid id PK "UUIDv7"
+        uuid user_id FK
+        string provider
+        string provider_user_id
+        string provider_email
+    }
+
+    REFRESH_TOKEN_FAMILIES {
+        uuid id PK "UUIDv7"
+        uuid user_id FK
+        string device_name
+        string ip_address
+        boolean is_revoked
+    }
+
+    REFRESH_TOKENS {
+        uuid id PK "UUIDv7"
+        uuid family_id FK
+        uuid user_id FK
+        string token_hash UK
+        uuid parent_token_id FK
+        boolean is_consumed
+        timestamp expires_at
+    }
+
+    AUTH_VERIFICATION_TOKENS {
+        uuid id PK "UUIDv7"
+        uuid user_id FK
+        string token_hash UK
+        string token_type
+        timestamp expires_at
+        timestamp consumed_at
+    }
+
     WORKSPACES {
-        uuid id PK
+        uuid id PK "UUIDv7"
         string name
         string slug UK
         timestamp created_at
@@ -47,7 +91,7 @@ erDiagram
     }
 
     BRAND_KITS {
-        uuid id PK
+        uuid id PK "UUIDv7"
         uuid workspace_id FK
         string brand_name
         string industry
@@ -59,17 +103,16 @@ erDiagram
     }
 
     SOCIAL_ACCOUNTS {
-        uuid id PK
+        uuid id PK "UUIDv7"
         uuid workspace_id FK
         string platform
         string account_id
-        string account_name
         text access_token_enc
         timestamp token_expires_at
     }
 
     CREATIVES {
-        uuid id PK
+        uuid id PK "UUIDv7"
         uuid workspace_id FK
         string prompt
         string aspect_ratio
@@ -80,7 +123,7 @@ erDiagram
     }
 
     SCHEDULED_POSTS {
-        uuid id PK
+        uuid id PK "UUIDv7"
         uuid workspace_id FK
         uuid creative_id FK
         timestamp scheduled_for
@@ -89,7 +132,7 @@ erDiagram
     }
 
     CAMPAIGNS {
-        uuid id PK
+        uuid id PK "UUIDv7"
         uuid workspace_id FK
         string channel
         string campaign_name
@@ -104,29 +147,107 @@ erDiagram
 ## 2. Production PostgreSQL DDL Script
 
 ```sql
--- Enable UUID extension
+-- Enable PGCrypto extension
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- 1. Users Table
+-- ============================================================================
+-- CLUSTER A: AUTHENTICATION & IDENTITY (GLOBAL SCOPE)
+-- ============================================================================
+
+-- 1. Users Table (UUIDv7 Primary Key generated in Go)
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    email VARCHAR(255) NOT NULL UNIQUE,
-    password_hash TEXT NOT NULL,
+    id UUID PRIMARY KEY, -- Go: uuid.NewV7()
+    email VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255), -- Argon2id hash (NULL for OAuth-only users)
     full_name VARCHAR(150) NOT NULL,
+    is_email_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    totp_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    totp_secret_enc BYTEA, -- AES-256-GCM encrypted TOTP secret
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE UNIQUE INDEX idx_users_email_lower ON users (LOWER(email));
 
--- 2. Workspaces Table (Tenant Boundary)
+-- 2. OAuth Third-Party Identities (Google, Facebook)
+CREATE TABLE user_identities (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    provider VARCHAR(50) NOT NULL CHECK (provider IN ('google', 'facebook')),
+    provider_user_id VARCHAR(255) NOT NULL,
+    provider_email VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    CONSTRAINT uq_provider_uid UNIQUE (provider, provider_user_id)
+);
+CREATE INDEX idx_user_identities_user ON user_identities(user_id);
+
+-- 3. Verification & Password Reset Tokens
+CREATE TABLE auth_verification_tokens (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) NOT NULL, -- SHA-256 of raw random token
+    token_type VARCHAR(32) NOT NULL CHECK (token_type IN ('EMAIL_VERIFICATION', 'PASSWORD_RESET')),
+    expires_at TIMESTAMPTZ NOT NULL,
+    consumed_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_auth_verification_lookup 
+ON auth_verification_tokens(token_hash, token_type) 
+WHERE consumed_at IS NULL;
+
+-- 4. Refresh Token Families (Device & Session Boundaries)
+CREATE TABLE refresh_token_families (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    device_name VARCHAR(255),
+    ip_address VARCHAR(45),
+    user_agent TEXT,
+    is_revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    revoked_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_refresh_token_families_user ON refresh_token_families(user_id) WHERE is_revoked = FALSE;
+
+-- 5. Refresh Tokens (Rotation & Replay Detection - RFC 6819)
+CREATE TABLE refresh_tokens (
+    id UUID PRIMARY KEY,
+    family_id UUID NOT NULL REFERENCES refresh_token_families(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token_hash VARCHAR(64) NOT NULL UNIQUE, -- SHA-256 of raw secret
+    parent_token_id UUID REFERENCES refresh_tokens(id) ON DELETE SET NULL,
+    is_consumed BOOLEAN NOT NULL DEFAULT FALSE,
+    consumed_at TIMESTAMPTZ,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_refresh_tokens_lookup ON refresh_tokens(token_hash);
+CREATE INDEX idx_refresh_tokens_family ON refresh_tokens(family_id);
+
+-- 6. TOTP Backup Recovery Codes
+CREATE TABLE user_totp_backup_codes (
+    id UUID PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    code_hash VARCHAR(64) NOT NULL, -- SHA-256 of one-time recovery code
+    used_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX idx_backup_codes_user ON user_totp_backup_codes(user_id) WHERE used_at IS NULL;
+
+-- ============================================================================
+-- CLUSTER B: MULTI-TENANT WORKSPACES & MEMBERSHIPS
+-- ============================================================================
+
+-- 7. Workspaces (Tenant Boundary)
 CREATE TABLE workspaces (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     slug VARCHAR(100) NOT NULL UNIQUE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- 3. Workspace Memberships (Role-Based Access)
+-- 8. Workspace Memberships (Role-Based Access Control)
 CREATE TABLE workspace_members (
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -136,9 +257,13 @@ CREATE TABLE workspace_members (
 );
 CREATE INDEX idx_workspace_members_user ON workspace_members(user_id);
 
--- 4. Brand Kits (Creative Identity)
+-- ============================================================================
+-- CLUSTER C: MARKETING & CREATIVE DOMAINS (TENANT SCOPED)
+-- ============================================================================
+
+-- 9. Brand Kits (1:1 with Workspace)
 CREATE TABLE brand_kits (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     workspace_id UUID NOT NULL UNIQUE REFERENCES workspaces(id) ON DELETE CASCADE,
     brand_name VARCHAR(255) NOT NULL,
     industry VARCHAR(100) NOT NULL DEFAULT 'General',
@@ -151,9 +276,9 @@ CREATE TABLE brand_kits (
 );
 CREATE INDEX idx_brand_kits_workspace ON brand_kits(workspace_id);
 
--- 5. Connected Social & Ad Accounts (Encrypted OAuth Tokens)
+-- 10. Connected Social & Ad Accounts (Encrypted OAuth Tokens)
 CREATE TABLE social_accounts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     platform VARCHAR(50) NOT NULL CHECK (platform IN ('meta', 'instagram', 'google_ads', 'whatsapp')),
     account_id VARCHAR(255) NOT NULL,
@@ -166,9 +291,9 @@ CREATE TABLE social_accounts (
 );
 CREATE INDEX idx_social_accounts_workspace ON social_accounts(workspace_id);
 
--- 6. Generated Creatives (Posters, Copy, Banners)
+-- 11. Generated Creatives (Festival Posters, Banners, Copy)
 CREATE TABLE creatives (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     prompt TEXT NOT NULL,
     aspect_ratio VARCHAR(20) NOT NULL DEFAULT '1:1' CHECK (aspect_ratio IN ('1:1', '4:5', '9:16', '16:9')),
@@ -180,9 +305,9 @@ CREATE TABLE creatives (
 );
 CREATE INDEX idx_creatives_workspace ON creatives(workspace_id);
 
--- 7. Scheduled Social Posts (Organic Calendar)
+-- 12. Scheduled Social Posts (Organic Calendar)
 CREATE TABLE scheduled_posts (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     creative_id UUID NOT NULL REFERENCES creatives(id) ON DELETE RESTRICT,
     platforms VARCHAR(50)[] NOT NULL,
@@ -194,9 +319,9 @@ CREATE TABLE scheduled_posts (
 );
 CREATE INDEX idx_scheduled_posts_workspace ON scheduled_posts(workspace_id, scheduled_for);
 
--- 8. Ad Campaigns (Paid Performance)
+-- 13. Paid Ad Campaigns (Meta, Google, WhatsApp)
 CREATE TABLE campaigns (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     workspace_id UUID NOT NULL REFERENCES workspaces(id) ON DELETE CASCADE,
     channel VARCHAR(50) NOT NULL CHECK (channel IN ('meta', 'google', 'whatsapp')),
     external_campaign_id VARCHAR(255),
