@@ -18,13 +18,17 @@
 	</p>
 
 	<div class="flex flex-wrap items-center justify-center gap-4 pt-4">
-		<Button variant="primary" size="lg">
-			<span>Open Console</span>
-			<ArrowRight class="w-4 h-4 ml-1.5" />
-		</Button>
-		<Button variant="secondary" size="lg">
-			<span>View Brand Kits</span>
-		</Button>
+		<a href="/login">
+			<Button variant="primary" size="lg">
+				<span>Open Console</span>
+				<ArrowRight class="w-4 h-4 ml-1.5" />
+			</Button>
+		</a>
+		<a href="/register">
+			<Button variant="secondary" size="lg">
+				<span>Create Free Account</span>
+			</Button>
+		</a>
 	</div>
 
 	<div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full pt-12 border-t border-border/60 text-left">
